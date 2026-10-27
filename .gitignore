@@ -8,11 +8,10 @@ venv/
 .env
 .env.*
 
-#  Large trained models
-# ml_model/crime_model.pkl
-# ml_model/crime_type_model.pkl
+# Uploaded evidence
+/static/uploads/
 
-# Backups
+# ML model backups
 model_backup/
 
 # IDE and system files
@@ -20,6 +19,3 @@ model_backup/
 .vscode/
 .DS_Store
 Thumbs.db
-
-# User-uploaded evidence
-/static/uploads/
