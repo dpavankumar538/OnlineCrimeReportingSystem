@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Home — CrimePortal{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<div class="row align-items-center py-5">
+    <div class="col-md-7">
+        <h1 class="display-4 fw-bold text-dark">
+            Report Crime. <span class="text-danger">Stay Safe.</span>
+        </h1>
+        <p class="lead text-muted mt-3">
+            An intelligent, secure platform for citizens to report crimes,
+            track case progress, and help law enforcement maintain public safety
+            — powered by Machine Learning prediction.
+        </p>
+        <div class="mt-4 d-flex gap-3 flex-wrap">
+            <a href="{{ url_for('register') }}"
+               class="btn btn-danger btn-lg px-4">
+                <i class="bi bi-person-plus me-2"></i>Register Now
+            </a>
+            <a href="{{ url_for('login') }}"
+               class="btn btn-outline-dark btn-lg px-4">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Login
+            </a>
+        </div>
+    </div>
+    <div class="col-md-5 text-center">
+        <!-- Placeholder icon — replace with an image if you have one -->
+        <i class="bi bi-shield-lock-fill text-warning"
+           style="font-size: 10rem; opacity: 0.8;"></i>
+    </div>
+</div>
+
+<hr>
+
+<!-- Feature Cards -->
+<div class="row text-center g-4 py-4">
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+                <i class="bi bi-exclamation-triangle-fill text-danger"
+                   style="font-size: 2.5rem;"></i>
+                <h5 class="card-title mt-3">Report Crimes</h5>
+                <p class="card-text text-muted">
+                    Submit detailed crime reports with evidence attachments
+                    directly from your browser — securely and anonymously.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+                <i class="bi bi-search text-primary" style="font-size: 2.5rem;"></i>
+                <h5 class="card-title mt-3">Track Progress</h5>
+                <p class="card-text text-muted">
+                    Monitor the real-time status of your submitted reports —
+                    from Pending to Under Investigation to Resolved.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body p-4">
+                <i class="bi bi-graph-up-arrow text-success"
+                   style="font-size: 2.5rem;"></i>
+                <h5 class="card-title mt-3">ML Predictions</h5>
+                <p class="card-text text-muted">
+                    Our machine learning engine analyzes patterns to predict
+                    crime hotspots and help police allocate resources effectively.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

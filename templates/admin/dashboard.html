@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">
+    <i class="bi bi-speedometer2 text-warning me-2"></i>Admin Control Panel
+</h3>
+
+<div class="row g-3 mb-4">
+
+    <div class="col-md-3">
+        <a href="{{ url_for('manage_users') }}" class="text-decoration-none">
+            <div class="card text-white bg-primary border-0 shadow-sm h-100 stat-card">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <i class="bi bi-people-fill fs-1"></i>
+                    <div>
+                        <h3 class="mb-0">{{ total_users }}</h3>
+                        <small>Registered Citizens</small>
+                        <div class="mt-1">
+                            <small class="opacity-75">
+                                <i class="bi bi-arrow-right-circle me-1"></i>
+                                Click to Manage
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="{{ url_for('manage_police') }}" class="text-decoration-none">
+            <div class="card text-white bg-dark border-0 shadow-sm h-100 stat-card">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <i class="bi bi-shield-fill fs-1 text-warning"></i>
+                    <div>
+                        <h3 class="mb-0">{{ total_police }}</h3>
+                        <small>Police Officers</small>
+                        <div class="mt-1">
+                            <small class="opacity-75">
+                                <i class="bi bi-arrow-right-circle me-1"></i>
+                                Click to Manage
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-2">
+        <a href="{{ url_for('all_reports') }}" class="text-decoration-none">
+            <div class="card text-white bg-danger border-0 shadow-sm h-100 stat-card">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-file-earmark-text-fill fs-1"></i>
+                    <h3 class="mb-0 mt-1">{{ total_reports }}</h3>
+                    <small>Total Reports</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-2">
+        <a href="{{ url_for('all_reports') }}" class="text-decoration-none">
+            <div class="card text-dark bg-warning border-0 shadow-sm h-100 stat-card">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-hourglass-split fs-1"></i>
+                    <h3 class="mb-0 mt-1">{{ pending }}</h3>
+                    <small>Pending Cases</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-2">
+        <a href="{{ url_for('all_reports') }}" class="text-decoration-none">
+            <div class="card text-white bg-success border-0 shadow-sm h-100 stat-card">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-check-circle-fill fs-1"></i>
+                    <h3 class="mb-0 mt-1">{{ resolved }}</h3>
+                    <small>Resolved Cases</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+    <a href="{{ url_for('manage_users') }}" class="btn btn-primary">
+        <i class="bi bi-people-fill me-2"></i>Manage Citizens
+    </a>
+    <a href="{{ url_for('manage_police') }}" class="btn btn-dark">
+        <i class="bi bi-shield-fill me-2"></i>Manage Officers
+    </a>
+    <a href="{{ url_for('all_reports') }}" class="btn btn-danger">
+        <i class="bi bi-folder2-open me-2"></i>All Reports
+    </a>
+    <a href="{{ url_for('crime_prediction') }}" class="btn btn-outline-dark">
+        <i class="bi bi-graph-up-arrow me-2"></i>ML Prediction Page
+    </a>
+</div>
+
+<div class="row g-4 mb-4">
+
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-bar-chart-fill text-danger me-2"></i>
+                Crime Type Breakdown
+            </div>
+            <div class="card-body">
+                <div id="adminChartData"
+                     style="display:none;"
+                     data-labels="{% for c in crime_types %}{{ c['crime_type'] }}{% if not loop.last %}||{% endif %}{% endfor %}"
+                     data-counts="{% for c in crime_types %}{{ c['count'] }}{% if not loop.last %}||{% endif %}{% endfor %}">
+                </div>
+                <canvas id="adminCrimeChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-clock-history text-danger me-2"></i>
+                Latest Reports
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Reporter</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in recent_reports %}
+                            <tr>
+                                <td>#{{ r['id'] }}</td>
+                                <td>{{ r['reporter_name'] }}</td>
+                                <td>{{ r['crime_type'] }}</td>
+                                <td>
+                                    <span class="badge
+                                        {% if r['status'] == 'Pending' %}bg-secondary
+                                        {% elif r['status'] == 'Under Investigation' %}bg-primary
+                                        {% elif r['status'] == 'Resolved' %}bg-success
+                                        {% else %}bg-dark{% endif %}">
+                                        {{ r['status'] }}
+                                    </span>
+                                </td>
+                                <td>{{ r['reported_at'].strftime('%d %b') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">
+                                    No reports yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+(function () {
+    var div    = document.getElementById('adminChartData');
+    var rawL   = div.getAttribute('data-labels');
+    var rawC   = div.getAttribute('data-counts');
+    var cLabels = rawL ? rawL.split('||') : [];
+    var cCounts = rawC ? rawC.split('||').map(Number) : [];
+    var cCtx    = document.getElementById('adminCrimeChart').getContext('2d');
+    new Chart(cCtx, {
+        type: 'bar',
+        data: {
+            labels: cLabels,
+            datasets: [{
+                label: 'Number of Reports',
+                data: cCounts,
+                backgroundColor: 'rgba(220,53,69,0.7)',
+                borderColor:     'rgba(220,53,69,1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, precision: 0 } }
+        }
+    });
+}());
+</script>
+
+{% include 'prediction_widget.html' %}
+
+{% endblock %}

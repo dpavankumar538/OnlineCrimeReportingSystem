@@ -1,0 +1,122 @@
+/* ============================================================
+   style.css — Custom styles for CrimePortal
+   Layered on top of Bootstrap 5
+   ============================================================ */
+
+/* ---- Global ---- */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ---- Navbar ---- */
+.navbar-brand {
+    font-size: 1.4rem;
+    letter-spacing: 0.5px;
+}
+
+/* ---- Cards ---- */
+.card {
+    border-radius: 12px;
+}
+
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* ---- Buttons ---- */
+.btn {
+    border-radius: 8px;
+}
+
+/* ---- Tables ---- */
+.table th {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ---- Status Badges ---- */
+.badge {
+    font-size: 0.78rem;
+    padding: 5px 10px;
+    border-radius: 20px;
+}
+
+/* ---- Dashboard Stat Numbers ---- */
+.card .display-5 {
+    font-size: 2.8rem;
+}
+
+/* ---- Footer ---- */
+footer {
+    font-size: 0.85rem;
+    letter-spacing: 0.3px;
+}
+
+/* ---- Responsive form fixes ---- */
+@media (max-width: 576px) {
+    .card-body { padding: 1rem !important; }
+}
+
+/* ============================================================
+   CLICKABLE STAT CARDS — hover lift effect
+   Used on admin dashboard cards that link to manage pages
+   ============================================================ */
+.stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* ============================================================
+   PREDICTION WIDGET STYLES
+   ============================================================ */
+#predictionWidget {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+#predictionWidget .card-header {
+    border-radius: 0 !important;
+}
+
+/* Progress bars inside prediction widget */
+#predBreakdownBars .progress {
+    border-radius: 10px;
+}
+
+/* Officer selection cards on assign_officer page */
+.officer-card {
+    transition: border-color 0.2s ease,
+                background-color 0.2s ease,
+                box-shadow 0.2s ease;
+    border-radius: 10px !important;
+}
+
+.officer-card:hover {
+    border-color: #0d6efd !important;
+    background-color: #f0f5ff !important;
+}
+
+/* Timeline dots on update_case page */
+.timeline .bg-primary {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+
+/* Report cards on my_reports page */
+.report-id {
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+/* Letter spacing utility */
+.letter-spacing-1 {
+    letter-spacing: 1px;
+}

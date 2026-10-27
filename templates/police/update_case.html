@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block title %}Update Case #{{ case['id'] }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    <!-- LEFT: Case Details + Update Form -->
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0">
+                    <i class="bi bi-folder-fill me-2"></i>
+                    Case #{{ case['id'] }} —
+                    <span class="text-warning">
+                        {{ case['crime_type'] }}
+                    </span>
+                </h5>
+            </div>
+            <div class="card-body p-4">
+
+                <!-- Case Info -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <small class="text-muted">LOCATION</small>
+                        <p class="fw-semibold mb-0">
+                            <i class="bi bi-geo-alt-fill
+                               text-danger me-1"></i>
+                            {{ case['location'] }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">DISTRICT</small>
+                        <p class="fw-semibold mb-0">
+                            {{ case['district'] or '—' }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">REPORTED ON</small>
+                        <p class="fw-semibold mb-0">
+                            {{ case['reported_at'].strftime(
+                               '%d %B %Y, %H:%M') }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">CURRENT STATUS</small>
+                        <p class="mb-0">
+                            <span class="badge fs-6
+                                {% if case['status'] == 'Pending' %}bg-secondary
+                                {% elif case['status'] == 'Under Investigation' %}bg-primary
+                                {% elif case['status'] == 'Resolved' %}bg-success
+                                {% else %}bg-dark{% endif %}">
+                                {{ case['status'] }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted">DESCRIPTION</small>
+                        <div class="bg-light rounded p-3 mt-1">
+                            <p class="mb-0">{{ case['description'] }}</p>
+                        </div>
+                    </div>
+
+                    {% if case['evidence_file'] %}
+                    <div class="col-12">
+                        <small class="text-muted">
+                            CITIZEN EVIDENCE
+                        </small>
+                        <div class="mt-1">
+                            <a href="{{ url_for('static', filename='uploads/' + case['evidence_file']) }}"
+                               target="_blank"
+                               class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-paperclip me-1"></i>
+                                View Original Evidence
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <hr>
+
+                <!-- Update Form -->
+                <h6 class="fw-bold mb-3">
+                    <i class="bi bi-pencil-fill text-primary me-2"></i>
+                    Update This Case
+                </h6>
+
+                <!--
+                    FIX 7: enctype multipart/form-data
+                    required for file upload
+                -->
+                <form method="POST" action=""
+                      enctype="multipart/form-data">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Change Status
+                        </label>
+                        <select class="form-select" name="status"
+                                required>
+                            <option value="Pending"
+                                {% if case['status']=='Pending' %}
+                                    selected{% endif %}>
+                                Pending
+                            </option>
+                            <option value="Under Investigation"
+                                {% if case['status']=='Under Investigation' %}
+                                    selected{% endif %}>
+                                Under Investigation
+                            </option>
+                            <option value="Resolved"
+                                {% if case['status']=='Resolved' %}
+                                    selected{% endif %}>
+                                Resolved
+                            </option>
+                            <option value="Closed"
+                                {% if case['status']=='Closed' %}
+                                    selected{% endif %}>
+                                Closed
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Investigation Note
+                        </label>
+                        <textarea class="form-control" name="note"
+                                  rows="3"
+                                  placeholder="Describe findings, actions taken, witness info...">
+                        </textarea>
+                    </div>
+
+                    <!-- FIX 7: Media upload section -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-camera-fill
+                               text-primary me-1"></i>
+                            Upload Evidence / Media
+                            <span class="text-muted fw-normal">
+                                (Optional)
+                            </span>
+                        </label>
+                        <input type="file"
+                               class="form-control"
+                               name="media_file"
+                               id="mediaFile"
+                               accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov">
+                        <div class="form-text">
+                            Photos, videos, PDFs of evidence.
+                            Max 16MB. Accepted: JPG, PNG, PDF, MP4, MOV
+                        </div>
+                        <div id="mediaPreview"
+                             class="mt-2" style="display:none;">
+                            <small class="text-success fw-semibold">
+                                <i class="bi bi-check-circle me-1"></i>
+                                <span id="mediaFileName"></span>
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info py-2 small">
+                        <i class="bi bi-eye me-1"></i>
+                        <strong>Transparency:</strong>
+                        All updates including uploaded media are
+                        visible to the reporting citizen.
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="submit"
+                                class="btn btn-primary px-4">
+                            <i class="bi bi-save2-fill me-2"></i>
+                            Save Update
+                        </button>
+                        <a href="{{ url_for('police_dashboard') }}"
+                           class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>
+                            Back
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Investigation Timeline -->
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-clock-history text-primary me-2"></i>
+                Investigation Timeline
+            </div>
+            <div class="card-body p-3"
+                 style="max-height:600px; overflow-y:auto;">
+                {% if updates %}
+                <div class="timeline">
+                    {% for update in updates %}
+                    <div class="d-flex gap-3 mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary rounded-circle
+                                        d-flex align-items-center
+                                        justify-content-center
+                                        text-white"
+                                 style="width:38px;height:38px;">
+                                <i class="bi bi-shield-fill"
+                                   style="font-size:1rem;"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="bg-light rounded p-2">
+                                <p class="mb-1 small">
+                                    {{ update['note'] }}
+                                </p>
+
+                                <!-- FIX 7: Show uploaded media in timeline -->
+                                {% if update['media_file'] %}
+                                <div class="mt-2">
+                                    {% set ext = update['media_file'].rsplit('.', 1)[-1].lower() %}
+                                    {% if ext in ['jpg','jpeg','png','gif'] %}
+                                    <a href="{{ url_for('static', filename='uploads/' + update['media_file']) }}"
+                                       target="_blank">
+                                        <img src="{{ url_for('static', filename='uploads/' + update['media_file']) }}"
+                                             class="img-thumbnail"
+                                             style="max-height:120px;
+                                                    max-width:100%;">
+                                    </a>
+                                    {% elif ext in ['mp4','mov'] %}
+                                    <video controls
+                                           style="max-width:100%;
+                                                  max-height:150px;"
+                                           class="rounded">
+                                        <source src="{{ url_for('static', filename='uploads/' + update['media_file']) }}">
+                                    </video>
+                                    {% else %}
+                                    <a href="{{ url_for('static', filename='uploads/' + update['media_file']) }}"
+                                       target="_blank"
+                                       class="btn btn-sm
+                                              btn-outline-primary mt-1">
+                                        <i class="bi bi-file-earmark me-1"></i>
+                                        View Attached File
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+
+                                <small class="text-muted d-block mt-1">
+                                    <strong>
+                                        {{ update['full_name'] }}
+                                    </strong> ·
+                                    {{ update['updated_at'].strftime(
+                                       '%d %b %Y, %H:%M') }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-chat-square-dots"
+                       style="font-size:2.5rem;"></i>
+                    <p class="mt-2 small">
+                        No updates yet. Add the first note above.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show selected file name preview
+document.getElementById('mediaFile')
+    .addEventListener('change', function () {
+        var preview  = document.getElementById('mediaPreview');
+        var nameSpan = document.getElementById('mediaFileName');
+        if (this.files && this.files[0]) {
+            nameSpan.textContent =
+                'Selected: ' + this.files[0].name +
+                ' (' + (this.files[0].size / 1024).toFixed(1) + ' KB)';
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Environment secrets
+.env
+.env.*
+
+# Large trained models
+ml_model/crime_model.pkl
+ml_model/crime_type_model.pkl
+
+# Backups
+model_backup/
+
+# IDE and system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

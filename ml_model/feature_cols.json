@@ -1,0 +1,12 @@
+[
+  "city_enc",
+  "hour",
+  "month",
+  "day_of_week",
+  "time_period",
+  "is_weekend",
+  "weapon_enc",
+  "gender_enc",
+  "age_group",
+  "Police Deployed"
+]
