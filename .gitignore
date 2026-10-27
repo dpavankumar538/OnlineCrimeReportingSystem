@@ -19,3 +19,7 @@ model_backup/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Large ML model files
+ml_model/crime_model.pkl
+ml_model/crime_type_model.pkl
