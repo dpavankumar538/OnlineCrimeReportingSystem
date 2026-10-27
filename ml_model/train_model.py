@@ -1,288 +1,559 @@
-# ml_model/train_model.py — Final Version
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import (RandomForestClassifier,
-                               ExtraTreesClassifier,
-                               GradientBoostingClassifier)
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import (accuracy_score, classification_report,
-                              balanced_accuracy_score)
-import joblib
+
+# ml_model/train_model.py
+# Crime Reporting and Prediction System
+# Trains domain and crime-type prediction models.
+
 import os
 import json
 import warnings
-warnings.filterwarnings('ignore')
+import joblib
+import numpy as np
+import pandas as pd
 
-print("=" * 60)
-print("  Crime Prediction Model — Final Version")
-print("=" * 60)
-
-# ----------------------------------------------------------
-# STEP 1: Load
-# ----------------------------------------------------------
-data_path = os.path.join(
-    os.path.dirname(__file__), 'data', 'crime_data.csv'
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    classification_report
 )
-df = pd.read_csv(data_path, encoding='utf-8-sig')
+
+warnings.filterwarnings("ignore")
+
+print("=" * 65)
+print("       CRIME REPORTING AND PREDICTION SYSTEM")
+print("                 MODEL TRAINING")
+print("=" * 65)
+
+# ----------------------------------------------------------
+# STEP 1: Paths and dataset loading
+# ----------------------------------------------------------
+
+MODEL_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(MODEL_DIR, "data", "crime_data.csv")
+
+if not os.path.exists(DATA_PATH):
+    raise FileNotFoundError(
+        f"Dataset not found: {DATA_PATH}\n"
+        "Check that crime_data.csv exists inside ml_model/data/."
+    )
+
+df = pd.read_csv(DATA_PATH, encoding="utf-8-sig")
 df.columns = df.columns.str.strip()
-print(f"\n✓ Dataset loaded: {len(df)} rows")
-print(f"  Columns: {list(df.columns)}")
+
+print(f"\nDataset loaded: {len(df)} rows")
+print("Columns:", list(df.columns))
 
 # ----------------------------------------------------------
-# STEP 2: Time features
+# STEP 2: Validate required columns
 # ----------------------------------------------------------
-def safe_parse(val, attr):
-    try:
-        return getattr(pd.to_datetime(val, dayfirst=True), attr)
-    except Exception:
-        defaults = {'hour': 12, 'month': 1, 'dayofweek': 0}
-        return defaults.get(attr, 0)
 
-df['hour']        = df['Time of Occurrence'].apply(
-    lambda x: safe_parse(x, 'hour')
-)
-df['month']       = df['Time of Occurrence'].apply(
-    lambda x: safe_parse(x, 'month')
-)
-df['day_of_week'] = df['Time of Occurrence'].apply(
-    lambda x: safe_parse(x, 'dayofweek')
-)
-df['time_period'] = df['hour'].apply(
-    lambda h: 0 if h < 6 else 1 if h < 12 else 2 if h < 18 else 3
-)
-df['is_weekend']  = (df['day_of_week'] >= 5).astype(int)
-print("✓ Time features extracted")
-
-# ----------------------------------------------------------
-# STEP 3: Drop rows missing key columns
-# ----------------------------------------------------------
-required = [
-    'City', 'Crime Description', 'Crime Domain',
-    'Weapon Used', 'Victim Age', 'Victim Gender',
-    'Police Deployed'
+required_columns = [
+    "City",
+    "Crime Description",
+    "Crime Domain",
+    "Weapon Used",
+    "Victim Age",
+    "Victim Gender",
+    "Police Deployed",
+    "Time of Occurrence"
 ]
-df = df.dropna(subset=required)
-print(f"✓ After dropping nulls: {len(df)} rows")
+
+missing_columns = [
+    column for column in required_columns
+    if column not in df.columns
+]
+
+if missing_columns:
+    raise ValueError(
+        "The dataset is missing these required columns: "
+        + ", ".join(missing_columns)
+    )
 
 # ----------------------------------------------------------
-# STEP 4: Build city crime frequency table
-# This gives us REAL accurate statistics from 40k rows
+# STEP 3: Extract time features
+#
+# If Time of Occurrence contains a full date and time,
+# extract all three features from it.
+#
+# If it contains only a time, use the available hour and
+# use neutral defaults for month and weekday. This avoids
+# treating an arbitrary time-only value as a real date.
 # ----------------------------------------------------------
+
+time_text = df["Time of Occurrence"].astype("string").str.strip()
+
+has_date_information = time_text.str.contains(
+    r"[-/]|[A-Za-z]{3,}",
+    regex=True,
+    na=False
+)
+
+parsed_time = pd.to_datetime(
+    time_text.where(has_date_information),
+    errors="coerce",
+    dayfirst=True
+)
+
+# Parse time-only values separately, such as 14:30 or 2:30 PM.
+time_only = pd.to_datetime(
+    time_text.where(~has_date_information),
+    errors="coerce",
+    format="mixed"
+)
+
+df["hour"] = parsed_time.dt.hour
+df["month"] = parsed_time.dt.month
+df["day_of_week"] = parsed_time.dt.dayofweek
+
+missing_hour = df["hour"].isna()
+df.loc[missing_hour, "hour"] = time_only.loc[missing_hour].dt.hour
+
+# Defaults are used only where a value could not be parsed.
+df["hour"] = df["hour"].fillna(12).astype(int)
+df["month"] = df["month"].fillna(1).astype(int)
+df["day_of_week"] = df["day_of_week"].fillna(0).astype(int)
+
+df["time_period"] = df["hour"].apply(
+    lambda hour: (
+        0 if hour < 6 else
+        1 if hour < 12 else
+        2 if hour < 18 else
+        3
+    )
+)
+
+df["is_weekend"] = (
+    df["day_of_week"] >= 5
+).astype(int)
+
+print("Time features extracted.")
+
+# ----------------------------------------------------------
+# STEP 4: Clean required fields
+# ----------------------------------------------------------
+
+df = df.dropna(subset=[
+    "City",
+    "Crime Description",
+    "Crime Domain",
+    "Weapon Used",
+    "Victim Age",
+    "Victim Gender",
+    "Police Deployed"
+]).copy()
+
+# Convert text columns consistently.
+text_columns = [
+    "City",
+    "Crime Description",
+    "Crime Domain",
+    "Weapon Used",
+    "Victim Gender"
+]
+
+for column in text_columns:
+    df[column] = df[column].astype(str).str.strip()
+
+# Remove empty target values.
+df = df[
+    (df["City"] != "") &
+    (df["Crime Description"] != "") &
+    (df["Crime Domain"] != "")
+].copy()
+
+df["Victim Age"] = pd.to_numeric(
+    df["Victim Age"], errors="coerce"
+).fillna(30)
+
+df["Police Deployed"] = pd.to_numeric(
+    df["Police Deployed"], errors="coerce"
+).fillna(0)
+
+if len(df) < 10:
+    raise ValueError(
+        "Not enough usable rows to train the models."
+    )
+
+if df["Crime Domain"].nunique() < 2:
+    raise ValueError(
+        "At least two crime-domain classes are required."
+    )
+
+if df["Crime Description"].nunique() < 2:
+    raise ValueError(
+        "At least two crime-description classes are required."
+    )
+
+print(f"Usable dataset rows: {len(df)}")
+
+# ----------------------------------------------------------
+# STEP 5: Build city crime frequency statistics
+# ----------------------------------------------------------
+
 city_crime_freq = (
-    df.groupby(['City', 'Crime Description'])
+    df.groupby(["City", "Crime Description"])
     .size()
-    .reset_index(name='count')
+    .reset_index(name="count")
 )
 
 city_summary = {}
-for city in sorted(df['City'].unique()):
-    cdf   = city_crime_freq[city_crime_freq['City'] == city]
-    total = cdf['count'].sum()
-    if total == 0:
+
+for city in sorted(df["City"].unique()):
+    city_data = city_crime_freq[
+        city_crime_freq["City"] == city
+    ]
+
+    total_cases = int(city_data["count"].sum())
+
+    if total_cases == 0:
         continue
+
     breakdown = {
-        row['Crime Description']: round(
-            row['count'] / total * 100, 1
+        row["Crime Description"]: round(
+            int(row["count"]) / total_cases * 100, 1
         )
-        for _, row in cdf.iterrows()
+        for _, row in city_data.iterrows()
     }
-    sorted_bd = dict(
-        sorted(breakdown.items(), key=lambda x: -x[1])
+
+    sorted_breakdown = dict(
+        sorted(
+            breakdown.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )
     )
+
     city_summary[city] = {
-        'top_crime'  : list(sorted_bd.keys())[0],
-        'top_pct'    : list(sorted_bd.values())[0],
-        'breakdown'  : sorted_bd,
-        'total_cases': int(total)
+        "top_crime": next(iter(sorted_breakdown)),
+        "top_pct": next(iter(sorted_breakdown.values())),
+        "breakdown": sorted_breakdown,
+        "total_cases": total_cases
     }
 
-# Also build domain frequency per city
 city_domain_freq = (
-    df.groupby(['City', 'Crime Domain'])
+    df.groupby(["City", "Crime Domain"])
     .size()
-    .reset_index(name='count')
+    .reset_index(name="count")
 )
+
 for city in city_summary:
-    cdf   = city_domain_freq[city_domain_freq['City'] == city]
-    total = cdf['count'].sum()
-    if total == 0:
-        continue
-    city_summary[city]['domain_breakdown'] = {
-        row['Crime Domain']: round(row['count'] / total * 100, 1)
-        for _, row in cdf.iterrows()
-    }
+    city_data = city_domain_freq[
+        city_domain_freq["City"] == city
+    ]
 
-freq_path = os.path.join(
-    os.path.dirname(__file__), 'city_crime_freq.json'
+    total = int(city_data["count"].sum())
+
+    if total:
+        city_summary[city]["domain_breakdown"] = {
+            row["Crime Domain"]: round(
+                int(row["count"]) / total * 100, 1
+            )
+            for _, row in city_data.iterrows()
+        }
+
+FREQUENCY_PATH = os.path.join(
+    MODEL_DIR, "city_crime_freq.json"
 )
-with open(freq_path, 'w') as f:
-    json.dump(city_summary, f, indent=2)
-print(f"✓ City crime frequency table saved")
-print(f"  Cities with data: {len(city_summary)}")
+
+with open(FREQUENCY_PATH, "w", encoding="utf-8") as file:
+    json.dump(
+        city_summary,
+        file,
+        indent=2,
+        ensure_ascii=False
+    )
+
+print(f"City statistics saved for {len(city_summary)} cities.")
 
 # ----------------------------------------------------------
-# STEP 5: Encode features
+# STEP 6: Encode categorical features
 # ----------------------------------------------------------
-city_encoder   = LabelEncoder()
+
+city_encoder = LabelEncoder()
 weapon_encoder = LabelEncoder()
 gender_encoder = LabelEncoder()
 domain_encoder = LabelEncoder()
-crime_encoder  = LabelEncoder()
+crime_encoder = LabelEncoder()
 
-df['city_enc']        = city_encoder.fit_transform(
-    df['City'].astype(str)
-)
-df['weapon_enc']      = weapon_encoder.fit_transform(
-    df['Weapon Used'].astype(str)
-)
-df['gender_enc']      = gender_encoder.fit_transform(
-    df['Victim Gender'].astype(str)
-)
-df['domain_enc']      = domain_encoder.fit_transform(
-    df['Crime Domain'].astype(str)
-)
-df['crime_enc']       = crime_encoder.fit_transform(
-    df['Crime Description'].astype(str)
-)
-df['Police Deployed'] = pd.to_numeric(
-    df['Police Deployed'], errors='coerce'
-).fillna(0)
-df['Victim Age']      = pd.to_numeric(
-    df['Victim Age'], errors='coerce'
-).fillna(30)
-df['age_group']       = df['Victim Age'].apply(
-    lambda a: 0 if a < 18 else 1 if a < 30 else
-              2 if a < 45 else 3 if a < 60 else 4
+df["city_enc"] = city_encoder.fit_transform(
+    df["City"]
 )
 
-print(f"\n✓ Encodings complete")
-print(f"  Cities      : {len(city_encoder.classes_)}")
-print(f"  Crime types : {len(crime_encoder.classes_)}")
-print(f"  Domains     : {list(domain_encoder.classes_)}")
-print(f"\n  Domain distribution:")
-for cls, cnt in zip(
-    domain_encoder.classes_,
-    np.bincount(df['domain_enc'])
-):
-    pct = cnt / len(df) * 100
-    bar = '█' * int(pct / 2)
-    print(f"    {cls:20s}: {cnt:5d} ({pct:.1f}%) {bar}")
+df["weapon_enc"] = weapon_encoder.fit_transform(
+    df["Weapon Used"]
+)
+
+df["gender_enc"] = gender_encoder.fit_transform(
+    df["Victim Gender"]
+)
+
+df["domain_enc"] = domain_encoder.fit_transform(
+    df["Crime Domain"]
+)
+
+df["crime_enc"] = crime_encoder.fit_transform(
+    df["Crime Description"]
+)
+
+df["age_group"] = df["Victim Age"].apply(
+    lambda age: (
+        0 if age < 18 else
+        1 if age < 30 else
+        2 if age < 45 else
+        3 if age < 60 else
+        4
+    )
+)
+
+print("\nEncoding complete.")
+print("Cities:", len(city_encoder.classes_))
+print("Crime types:", len(crime_encoder.classes_))
+print("Domains:", list(domain_encoder.classes_))
 
 # ----------------------------------------------------------
-# STEP 6: Feature columns
+# STEP 7: Prepare features
 # ----------------------------------------------------------
+
 feature_cols = [
-    'city_enc', 'hour', 'month', 'day_of_week',
-    'time_period', 'is_weekend', 'weapon_enc',
-    'gender_enc', 'age_group', 'Police Deployed'
+    "city_enc",
+    "hour",
+    "month",
+    "day_of_week",
+    "time_period",
+    "is_weekend",
+    "weapon_enc",
+    "gender_enc",
+    "age_group",
+    "Police Deployed"
 ]
 
-X = df[feature_cols]  # pandas DataFrame — no UserWarning
+X = df[feature_cols].copy()
 
-model_dir = os.path.dirname(__file__)
-with open(os.path.join(model_dir, 'feature_cols.json'), 'w') as f:
-    json.dump(feature_cols, f)
+FEATURE_PATH = os.path.join(
+    MODEL_DIR, "feature_cols.json"
+)
+
+with open(FEATURE_PATH, "w", encoding="utf-8") as file:
+    json.dump(feature_cols, file, indent=2)
 
 # ----------------------------------------------------------
-# STEP 7: Train Domain Model
-# Using ExtraTreesClassifier — better for imbalanced data
-# class_weight='balanced_subsample' is more robust than
-# 'balanced' for Random Forest / ExtraTrees
+# STEP 8: Shared training configuration
+#
+# These settings reduce model complexity compared with
+# unrestricted trees. File sizes must still be checked
+# after training.
 # ----------------------------------------------------------
-y_domain = df['domain_enc']
+
+MODEL_SETTINGS = {
+    "n_estimators": 100,
+    "max_depth": 20,
+    "min_samples_split": 5,
+    "min_samples_leaf": 2,
+    "class_weight": "balanced",
+    "random_state": 42,
+    "n_jobs": -1
+}
+
+# ----------------------------------------------------------
+# STEP 9: Train crime-domain model
+# ----------------------------------------------------------
+
+print("\n" + "=" * 65)
+print("TRAINING CRIME-DOMAIN MODEL")
+print("=" * 65)
+
+y_domain = df["domain_enc"]
+
+domain_counts = y_domain.value_counts()
+
+if domain_counts.min() < 2:
+    raise ValueError(
+        "Each crime-domain class needs at least two records "
+        "for a stratified train/test split."
+    )
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y_domain, test_size=0.2,
-    random_state=42, stratify=y_domain
+    X,
+    y_domain,
+    test_size=0.2,
+    random_state=42,
+    stratify=y_domain
 )
 
-print("\nTraining Domain Model (ExtraTrees + balanced_subsample)...")
-model_domain = ExtraTreesClassifier(
-    n_estimators=300,
-    max_depth=None,
-    min_samples_split=2,
-    min_samples_leaf=1,
-    class_weight='balanced_subsample',
-    random_state=42,
-    n_jobs=-1
-)
+model_domain = ExtraTreesClassifier(**MODEL_SETTINGS)
 model_domain.fit(X_train, y_train)
 
-y_pred    = model_domain.predict(X_test)
-acc       = accuracy_score(y_test, y_pred)
-bal_acc   = balanced_accuracy_score(y_test, y_pred)
+domain_predictions = model_domain.predict(X_test)
 
-print(f"\n{'='*60}")
-print(f"  DOMAIN MODEL ACCURACY         : {acc*100:.2f}%")
-print(f"  DOMAIN BALANCED ACCURACY      : {bal_acc*100:.2f}%")
-print(f"{'='*60}\n")
-print(classification_report(
-    y_test, y_pred,
-    target_names=domain_encoder.classes_,
-    zero_division=0
-))
-
-cv_bal = cross_val_score(
-    model_domain, X, y_domain,
-    cv=5, scoring='balanced_accuracy', n_jobs=-1
+domain_accuracy = accuracy_score(
+    y_test, domain_predictions
 )
-print(f"  Balanced CV: {cv_bal.mean()*100:.2f}% "
-      f"(+/- {cv_bal.std()*100:.2f}%)")
 
-# Feature importance
-print("\nFeature Importance:")
-for feat, imp in sorted(
+domain_balanced_accuracy = balanced_accuracy_score(
+    y_test, domain_predictions
+)
+
+print(f"Domain accuracy: {domain_accuracy * 100:.2f}%")
+print(
+    "Domain balanced accuracy: "
+    f"{domain_balanced_accuracy * 100:.2f}%"
+)
+
+print("\nDomain classification report:")
+print(
+    classification_report(
+        y_test,
+        domain_predictions,
+        labels=np.arange(len(domain_encoder.classes_)),
+        target_names=domain_encoder.classes_,
+        zero_division=0
+    )
+)
+
+# Run five-fold cross-validation only when every class
+# has at least five examples.
+if domain_counts.min() >= 5:
+    print("Running five-fold domain cross-validation...")
+
+    cv_scores = cross_val_score(
+        ExtraTreesClassifier(**MODEL_SETTINGS),
+        X,
+        y_domain,
+        cv=5,
+        scoring="balanced_accuracy",
+        n_jobs=-1
+    )
+
+    print(
+        f"Domain CV balanced accuracy: "
+        f"{cv_scores.mean() * 100:.2f}% "
+        f"(+/- {cv_scores.std() * 100:.2f}%)"
+    )
+else:
+    print(
+        "Skipping five-fold cross-validation: "
+        "at least one domain class has fewer than five records."
+    )
+
+print("\nDomain model feature importance:")
+
+for feature, importance in sorted(
     zip(feature_cols, model_domain.feature_importances_),
-    key=lambda x: -x[1]
+    key=lambda item: item[1],
+    reverse=True
 ):
-    bar = '█' * int(imp * 50)
-    print(f"  {feat:20s}: {imp:.4f}  {bar}")
+    print(f"  {feature:20s}: {importance:.4f}")
 
 # ----------------------------------------------------------
-# STEP 8: Train Crime Type Model
+# STEP 10: Train crime-type model
 # ----------------------------------------------------------
-y_crime = df['crime_enc']
+
+print("\n" + "=" * 65)
+print("TRAINING CRIME-TYPE MODEL")
+print("=" * 65)
+
+y_crime = df["crime_enc"]
+
+crime_counts = y_crime.value_counts()
+
+if crime_counts.min() < 2:
+    raise ValueError(
+        "At least two records per crime type are required "
+        "for a stratified train/test split. Review rare classes "
+        "or the dataset before training."
+    )
 
 X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(
-    X, y_crime, test_size=0.2,
-    random_state=42, stratify=y_crime
+    X,
+    y_crime,
+    test_size=0.2,
+    random_state=42,
+    stratify=y_crime
 )
 
-print("\nTraining Crime Type Model...")
 model_crime = ExtraTreesClassifier(
-    n_estimators=200,
-    class_weight='balanced_subsample',
+    n_estimators=50,
+    max_depth=12,
+    min_samples_split=10,
+    min_samples_leaf=5,
+    class_weight="balanced",
     random_state=42,
     n_jobs=-1
 )
 model_crime.fit(X_train_c, y_train_c)
-y_pred_c  = model_crime.predict(X_test_c)
-acc_c     = accuracy_score(y_test_c, y_pred_c)
-bal_acc_c = balanced_accuracy_score(y_test_c, y_pred_c)
-print(f"  Crime Type Accuracy         : {acc_c*100:.2f}%")
-print(f"  Crime Type Balanced Accuracy: {bal_acc_c*100:.2f}%")
+
+crime_predictions = model_crime.predict(X_test_c)
+
+crime_accuracy = accuracy_score(
+    y_test_c, crime_predictions
+)
+
+crime_balanced_accuracy = balanced_accuracy_score(
+    y_test_c, crime_predictions
+)
+
+print(f"Crime-type accuracy: {crime_accuracy * 100:.2f}%")
+print(
+    "Crime-type balanced accuracy: "
+    f"{crime_balanced_accuracy * 100:.2f}%"
+)
+
+print("\nCrime-type classification report:")
+print(
+    classification_report(
+        y_test_c,
+        crime_predictions,
+        labels=np.arange(len(crime_encoder.classes_)),
+        target_names=crime_encoder.classes_,
+        zero_division=0
+    )
+)
 
 # ----------------------------------------------------------
-# STEP 9: Save everything
+# STEP 11: Save models and encoders
 # ----------------------------------------------------------
-joblib.dump(model_domain,   os.path.join(model_dir, 'crime_model.pkl'))
-joblib.dump(model_crime,    os.path.join(model_dir, 'crime_type_model.pkl'))
-joblib.dump(crime_encoder,  os.path.join(model_dir, 'label_encoder.pkl'))
-joblib.dump(domain_encoder, os.path.join(model_dir, 'domain_encoder.pkl'))
-joblib.dump(city_encoder,   os.path.join(model_dir, 'district_encoder.pkl'))
-joblib.dump(weapon_encoder, os.path.join(model_dir, 'weapon_encoder.pkl'))
-joblib.dump(gender_encoder, os.path.join(model_dir, 'gender_encoder.pkl'))
 
-print(f"\n✓ All models saved successfully")
-print(f"\n{'='*60}")
-print(f"  SUMMARY")
-print(f"{'='*60}")
-print(f"  Domain model balanced accuracy : {bal_acc*100:.2f}%")
-print(f"  Crime type balanced accuracy   : {bal_acc_c*100:.2f}%")
-print(f"  Cities in frequency table      : {len(city_summary)}")
-print(f"  Total training records         : {len(df)}")
-print(f"\n  NOTE: Crime frequency breakdown uses REAL historical")
-print(f"  data from {len(df)} records — this is the most accurate")
-print(f"  predictor and does not depend on model accuracy.")
-print(f"\n🎉 Training complete! Run: python app.py")
+artifacts = {
+    "crime_model.pkl": model_domain,
+    "crime_type_model.pkl": model_crime,
+    "label_encoder.pkl": crime_encoder,
+    "domain_encoder.pkl": domain_encoder,
+    "district_encoder.pkl": city_encoder,
+    "weapon_encoder.pkl": weapon_encoder,
+    "gender_encoder.pkl": gender_encoder
+}
+
+print("\nSaving model files...")
+
+for filename, artifact in artifacts.items():
+    output_path = os.path.join(MODEL_DIR, filename)
+    joblib.dump(artifact, output_path, compress=3)
+
+    size_mb = os.path.getsize(output_path) / (1024 * 1024)
+
+    print(f"Saved {filename}: {size_mb:.2f} MB")
+
+print("\n" + "=" * 65)
+print("TRAINING COMPLETE")
+print("=" * 65)
+print(f"Training records: {len(df)}")
+print(f"Cities: {len(city_summary)}")
+print(f"Crime-domain accuracy: {domain_accuracy * 100:.2f}%")
+print(f"Crime-domain balanced accuracy: "
+      f"{domain_balanced_accuracy * 100:.2f}%")
+print(f"Crime-type accuracy: {crime_accuracy * 100:.2f}%")
+print(f"Crime-type balanced accuracy: "
+      f"{crime_balanced_accuracy * 100:.2f}%")
+
+print("\nSaved supporting files:")
+print("  feature_cols.json")
+print("  city_crime_freq.json")
+
+print("\nImportant:")
+print("- Verify that app.py loads both models correctly.")
+print("- Verify that prediction features match feature_cols.json.")
+print("- Test both prediction routes before deployment.")
+print("- Check all .pkl files against GitHub's 100 MB limit.")
+print("\nNext command: dir ml_model\\*.pkl")

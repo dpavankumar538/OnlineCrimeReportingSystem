@@ -1,10 +1,21 @@
-
-venv/
-.venv/
+# Python
 __pycache__/
 *.py[cod]
+venv/
+.venv/
+
+# Environment secrets
 .env
-.vscode/
+.env.*
+
+# Uploaded evidence
+/static/uploads/
+
+# ML model backups
+model_backup/
+
+# IDE and system files
 .idea/
-*.log
-static/uploads/
+.vscode/
+.DS_Store
+Thumbs.db
