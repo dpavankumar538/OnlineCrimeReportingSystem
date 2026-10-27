@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">
+    <i class="bi bi-person-circle text-danger me-2"></i>
+    Welcome, {{ session['user_name'] }}
+</h3>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    {% set stat_map = {} %}
+    {% for s in stats %}
+        {% set _ = stat_map.update({s['status']: s['count']}) %}
+    {% endfor %}
+
+    <div class="col-md-3">
+        <div class="card text-white bg-secondary border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h2 class="display-5 fw-bold">
+                    {{ stat_map.get('Pending', 0) }}
+                </h2>
+                <p class="mb-0">Pending</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-primary border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h2 class="display-5 fw-bold">
+                    {{ stat_map.get('Under Investigation', 0) }}
+                </h2>
+                <p class="mb-0">Under Investigation</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h2 class="display-5 fw-bold">
+                    {{ stat_map.get('Resolved', 0) }}
+                </h2>
+                <p class="mb-0">Resolved</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-dark bg-warning border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h2 class="display-5 fw-bold">
+                    {{ stats | sum(attribute='count') }}
+                </h2>
+                <p class="mb-0">Total Reports</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="d-flex gap-3 mb-4">
+    <a href="{{ url_for('report_crime') }}" class="btn btn-danger">
+        <i class="bi bi-plus-circle me-2"></i>Report New Crime
+    </a>
+    <a href="{{ url_for('my_reports') }}" class="btn btn-outline-dark">
+        <i class="bi bi-list-ul me-2"></i>View All My Reports
+    </a>
+</div>
+
+<!-- Recent Reports Table -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-clock-history me-2 text-danger"></i>Recent Reports
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Crime Type</th>
+                        <th>Location</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recent %}
+                    <tr>
+                        <td>{{ r['id'] }}</td>
+                        <td>{{ r['crime_type'] }}</td>
+                        <td>{{ r['location'] }}</td>
+                        <td>{{ r['reported_at'].strftime('%d %b %Y') }}</td>
+                        <td>
+                            {% if r['status'] == 'Pending' %}
+                                <span class="badge bg-secondary">Pending</span>
+                            {% elif r['status'] == 'Under Investigation' %}
+                                <span class="badge bg-primary">
+                                    Under Investigation
+                                </span>
+                            {% elif r['status'] == 'Resolved' %}
+                                <span class="badge bg-success">Resolved</span>
+                            {% else %}
+                                <span class="badge bg-dark">
+                                    {{ r['status'] }}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            No reports submitted yet.
+                            <a href="{{ url_for('report_crime') }}">
+                                Submit your first report
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ML Crime Prediction Widget -->
+{% include 'prediction_widget.html' %}
+
+{% endblock %}

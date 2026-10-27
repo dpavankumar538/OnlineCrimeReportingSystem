@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Assign Officer - Case #{{ case['id'] }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-md-9">
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-primary text-white py-3">
+        <h5 class="mb-0">
+            <i class="bi bi-person-badge-fill me-2"></i>
+            Assign Officer to Case #{{ case['id'] }}
+        </h5>
+    </div>
+
+    <div class="card-body p-4">
+
+        <div class="alert alert-light border mb-4">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <small class="text-muted fw-bold d-block">CRIME TYPE</small>
+                    <span class="badge bg-danger fs-6 mt-1">{{ case['crime_type'] }}</span>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted fw-bold d-block">CURRENT STATUS</small>
+                    <span class="badge bg-secondary mt-1">{{ case['status'] }}</span>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted fw-bold d-block">LOCATION</small>
+                    <span class="small fw-semibold">{{ case['location'] }}</span>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted fw-bold d-block">DISTRICT</small>
+                    <span class="small fw-semibold">{{ case['district'] or 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" action="">
+
+            <h6 class="fw-bold mb-3 text-primary">
+                <i class="bi bi-shield-fill me-2"></i>
+                Click on an officer card to select
+            </h6>
+
+            {% if officers %}
+
+            <div class="row g-3 mb-4">
+                {% for o in officers %}
+                <div class="col-md-6">
+                    <div class="card border officer-card h-100"
+                         id="card{{ o['id'] }}">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <p class="mb-1 fw-bold">
+                                        <i class="bi bi-shield-fill text-primary me-1"></i>
+                                        {{ o['full_name'] }}
+                                        <span class="badge bg-dark ms-1">
+                                            {{ o['badge_number'] }}
+                                        </span>
+                                    </p>
+                                    <p class="mb-1 small text-muted">
+                                        <i class="bi bi-building me-1"></i>
+                                        {{ o['station'] or 'No station' }}
+                                    </p>
+                                    <p class="mb-1 small text-muted">
+                                        <i class="bi bi-geo-alt me-1"></i>
+                                        {{ o['district'] or 'No district' }}
+                                    </p>
+                                    <p class="mb-0 small text-primary">
+                                        <i class="bi bi-envelope me-1"></i>
+                                        {{ o['email'] }}
+                                    </p>
+                                </div>
+                                <span class="check-icon fs-4 text-primary"
+                                      id="chk{{ o['id'] }}"
+                                      style="display:none;">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                </span>
+                            </div>
+                            <input type="radio"
+                                   class="officer-radio"
+                                   name="officer_id_radio"
+                                   value="{{ o['id'] }}"
+                                   style="display:none;"
+                                   {% if case['assigned_to'] == o['id'] %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <input type="hidden" name="officer_id" id="officerIdField" value="">
+
+            <div class="alert alert-info py-2 small">
+                <i class="bi bi-info-circle me-1"></i>
+                Assigning an officer will automatically set status to
+                <strong>Under Investigation</strong>.
+            </div>
+
+            <div class="d-flex gap-3 mt-3">
+                <button type="submit"
+                        class="btn btn-primary px-4"
+                        id="submitBtn"
+                        disabled>
+                    <i class="bi bi-check2-circle me-2"></i>Assign Officer
+                </button>
+                <a href="{{ url_for('all_reports') }}"
+                   class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Cancel
+                </a>
+            </div>
+
+            {% else %}
+
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                No police officers found.
+                <a href="{{ url_for('manage_police') }}" class="alert-link">
+                    Add an officer first.
+                </a>
+            </div>
+            <a href="{{ url_for('all_reports') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Go Back
+            </a>
+
+            {% endif %}
+
+        </form>
+    </div>
+</div>
+
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    var submitBtn   = document.getElementById('submitBtn');
+    var hiddenField = document.getElementById('officerIdField');
+    var allCards    = document.querySelectorAll('.officer-card');
+
+    function selectCard(card) {
+        var radio = card.querySelector('.officer-radio');
+        if (!radio) return;
+        var id = radio.value;
+
+        allCards.forEach(function (c) {
+            c.style.borderColor     = '';
+            c.style.backgroundColor = '';
+            c.style.boxShadow       = '';
+            var chk = c.querySelector('.check-icon');
+            if (chk) chk.style.display = 'none';
+        });
+
+        card.style.borderColor     = '#0d6efd';
+        card.style.backgroundColor = '#eef3ff';
+        card.style.boxShadow       = '0 0 0 3px rgba(13,110,253,0.2)';
+
+        var icon = document.getElementById('chk' + id);
+        if (icon) icon.style.display = 'inline';
+
+        hiddenField.value  = id;
+        submitBtn.disabled = false;
+    }
+
+    allCards.forEach(function (card) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', function () {
+            selectCard(card);
+        });
+    });
+
+    var preChecked = document.querySelector('.officer-radio:checked');
+    if (preChecked) {
+        selectCard(preChecked.closest('.officer-card'));
+    }
+
+});
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}My Reports — CrimePortal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>
+        <i class="bi bi-file-earmark-text text-danger me-2"></i>My Crime Reports
+    </h3>
+    <a href="{{ url_for('report_crime') }}" class="btn btn-danger">
+        <i class="bi bi-plus-circle me-2"></i>New Report
+    </a>
+</div>
+
+{% if reports %}
+<div class="row g-3">
+    {% for r in reports %}
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+
+                    <!-- Crime type + badge -->
+                    <div class="col-md-3">
+                        <h5 class="mb-1 fw-bold text-danger">{{ r['crime_type'] }}</h5>
+                        <span class="badge
+                            {% if r['status'] == 'Pending' %}bg-secondary
+                            {% elif r['status'] == 'Under Investigation' %}bg-primary
+                            {% elif r['status'] == 'Resolved' %}bg-success
+                            {% else %}bg-dark{% endif %} rounded-pill">
+                            {{ r['status'] }}
+                        </span>
+                    </div>
+
+                    <!-- Location + description -->
+                    <div class="col-md-5">
+                        <p class="mb-1">
+                            <i class="bi bi-geo-alt text-muted me-1"></i>
+                            <strong>{{ r['location'] }}</strong>
+                            {% if r['district'] %} — {{ r['district'] }}{% endif %}
+                        </p>
+                        <p class="text-muted small mb-0">
+                            {{ r['description'][:120] }}
+                            {% if r['description']|length > 120 %}...{% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Officer + date -->
+                    <div class="col-md-2 text-center">
+                        <small class="text-muted d-block">
+                            <i class="bi bi-person-badge me-1"></i>
+                            {% if r['officer_name'] %}
+                                {{ r['officer_name'] }}
+                            {% else %}
+                                <span class="text-warning">Unassigned</span>
+                            {% endif %}
+                        </small>
+                        <small class="text-muted">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            {{ r['reported_at'].strftime('%d %b %Y') }}
+                        </small>
+                    </div>
+
+                    <!-- Evidence badge -->
+                    <div class="col-md-2 text-end">
+                        <span class="report-id text-muted small d-block mb-1">
+                            Report #{{ r['id'] }}
+                        </span>
+                        {% if r['evidence_file'] %}
+                            <span class="badge bg-info text-dark">
+                                <i class="bi bi-paperclip me-1"></i>Evidence Attached
+                            </span>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty state -->
+<div class="text-center py-5 mt-4">
+    <i class="bi bi-inbox text-muted" style="font-size: 5rem;"></i>
+    <h4 class="text-muted mt-3">No Reports Yet</h4>
+    <p class="text-muted">You haven't submitted any crime reports.</p>
+    <a href="{{ url_for('report_crime') }}" class="btn btn-danger mt-2">
+        <i class="bi bi-plus-circle me-2"></i>Submit Your First Report
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}

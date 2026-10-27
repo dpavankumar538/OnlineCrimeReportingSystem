@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}Manage Police Officers — Admin{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">
+    <i class="bi bi-shield-fill text-primary me-2"></i>
+    Police Officers Management
+</h3>
+
+<div class="row g-4">
+
+    <!-- LEFT: Add New Officer Form -->
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-plus-fill me-2"></i>
+                    Add New Officer
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST"
+                      action="{{ url_for('add_police') }}">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Full Name *
+                        </label>
+                        <input type="text" class="form-control"
+                               name="full_name" required
+                               placeholder="Officer Full Name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Email *
+                        </label>
+                        <input type="email" class="form-control"
+                               name="email" required
+                               placeholder="officer@police.gov.in">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Phone
+                        </label>
+                        <input type="tel" class="form-control"
+                               name="phone"
+                               placeholder="9876543210">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Password *
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control"
+                                   name="password" id="officerPwd"
+                                   required
+                                   placeholder="Min 6 characters">
+                            <button class="btn btn-outline-secondary"
+                                    type="button" id="togglePwd">
+                                <i class="bi bi-eye"
+                                   id="eyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Badge Number *
+                        </label>
+                        <input type="text" class="form-control"
+                               name="badge_number" required
+                               placeholder="e.g., HYD-001">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Police Station
+                        </label>
+                        <input type="text" class="form-control"
+                               name="station"
+                               placeholder="e.g., Jubilee Hills PS">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            District / City *
+                        </label>
+                        <input type="text" class="form-control"
+                               name="district" required
+                               placeholder="e.g., Hyderabad">
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Add Officer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Officers Table with district filter -->
+    <div class="col-md-7">
+
+        <div class="card border-0 border-start border-4
+                    border-primary shadow-sm mb-3">
+            <div class="card-body py-2">
+                <h6 class="fw-bold text-primary mb-1">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    How Officers Log In
+                </h6>
+                <ol class="mb-0 small text-muted ps-3">
+                    <li>
+                        Go to <strong>localhost:5000/login</strong>
+                    </li>
+                    <li>
+                        Enter the officer's <strong>email</strong>
+                        from the table below
+                    </li>
+                    <li>
+                        Enter the <strong>password</strong>
+                        set above
+                    </li>
+                    <li>
+                        They land on the
+                        <strong>Police Dashboard</strong>
+                        automatically
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold
+                        d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-list-ul text-primary me-2"></i>
+                    All Officers
+                    <span class="badge bg-primary ms-1">
+                        {{ officers | length if officers else 0 }}
+                    </span>
+                </span>
+                <!-- ISSUE 4: Filter by district -->
+                <select class="form-select form-select-sm"
+                        id="filterDistrict"
+                        style="width:160px;">
+                    <option value="">All Districts</option>
+                    {% set dists = [] %}
+                    {% for o in officers if officers %}
+                        {% if o['district'] and
+                              o['district'] not in dists %}
+                            {% set _ = dists.append(o['district']) %}
+                            <option value="{{ o['district'] }}">
+                                {{ o['district'] }}
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover
+                                  align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Name</th>
+                                <th>Badge</th>
+                                <th>District</th>
+                                <th>Station</th>
+                                <th>Login Email</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="officerTableBody">
+                            {% if officers %}
+                                {% for o in officers %}
+                                <tr class="officer-row"
+                                    data-district="{{ o['district'] or '' }}">
+                                    <td>
+                                        <i class="bi bi-shield-fill
+                                           text-primary me-1"></i>
+                                        <strong>{{ o['full_name'] }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-dark">
+                                            {{ o['badge_number'] }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info
+                                                     text-dark">
+                                            <i class="bi bi-geo-alt me-1"></i>
+                                            {{ o['district'] or '—' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {{ o['station'] or '—' }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small class="text-primary">
+                                            <i class="bi bi-envelope me-1"></i>
+                                            {{ o['email'] }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('delete_user', user_id=o['id']) }}"
+                                           class="btn btn-sm
+                                                  btn-outline-danger
+                                                  del-officer"
+                                           data-name="{{ o['full_name'] }}">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="6"
+                                    class="text-center text-muted py-4">
+                                    <i class="bi bi-shield-x"
+                                       style="font-size:2rem;"></i>
+                                    <p class="mt-2 mb-0">
+                                        No officers added yet.
+                                    </p>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('togglePwd')
+    .addEventListener('click', function () {
+        var pwd  = document.getElementById('officerPwd');
+        var icon = document.getElementById('eyeIcon');
+        if (pwd.type === 'password') {
+            pwd.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            pwd.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    });
+
+// District filter
+document.getElementById('filterDistrict')
+    .addEventListener('change', function () {
+        var val = this.value.toLowerCase();
+        document.querySelectorAll('.officer-row')
+            .forEach(function (row) {
+                var d = row.getAttribute('data-district').toLowerCase();
+                row.style.display = (!val || d === val) ? '' : 'none';
+            });
+    });
+
+// Delete confirmation
+document.querySelectorAll('.del-officer').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+        var name = this.getAttribute('data-name');
+        if (!confirm('Remove officer ' + name + '?\n\nThis will also unassign their cases. This cannot be undone.')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

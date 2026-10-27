@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}All Crime Reports — Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>
+        <i class="bi bi-folder2-open text-danger me-2"></i>All Crime Reports
+        <span class="badge bg-danger ms-2">{{ reports | length }}</span>
+    </h3>
+    <div class="d-flex gap-2">
+        <select class="form-select form-select-sm" id="filterStatus"
+                style="width:auto;">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Under Investigation">Under Investigation</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+        </select>
+        <input type="text" class="form-control form-control-sm"
+               id="searchBox"
+               placeholder="Search crime type or location..."
+               style="width:220px;">
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="reportsTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#ID</th>
+                        <th>Reporter</th>
+                        <th>Crime Type</th>
+                        <th>Location</th>
+                        <th>Assigned Officer</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reports %}
+                    <tr class="report-row"
+                        data-status="{{ r['status'] }}"
+                        data-search="{{ r['crime_type']|lower }} {{ r['location']|lower }}">
+                        <td><strong>#{{ r['id'] }}</strong></td>
+                        <td>
+                            <i class="bi bi-person-circle text-muted me-1"></i>
+                            {{ r['reporter_name'] }}
+                        </td>
+                        <td>
+                            <span class="badge bg-danger rounded-pill">
+                                {{ r['crime_type'] }}
+                            </span>
+                        </td>
+                        <td>
+                            <small>
+                                <i class="bi bi-geo-alt text-muted me-1"></i>
+                                {{ r['location'] }}
+                                {% if r['district'] %}
+                                <br>
+                                <span class="text-muted">{{ r['district'] }}</span>
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            {% if r['officer_name'] %}
+                                <i class="bi bi-shield-fill text-primary me-1"></i>
+                                {{ r['officer_name'] }}
+                            {% else %}
+                                <span class="text-warning">
+                                    <i class="bi bi-dash-circle me-1"></i>Unassigned
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>
+                                {{ r['reported_at'].strftime('%d %b %Y') }}<br>
+                                <span class="text-muted">
+                                    {{ r['reported_at'].strftime('%H:%M') }}
+                                </span>
+                            </small>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if r['status'] == 'Pending' %}bg-secondary
+                                {% elif r['status'] == 'Under Investigation' %}bg-primary
+                                {% elif r['status'] == 'Resolved' %}bg-success
+                                {% else %}bg-dark{% endif %}">
+                                {{ r['status'] }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <!-- ASSIGN OFFICER BUTTON -->
+                                <a href="{{ url_for('assign_officer', report_id=r['id']) }}"
+                                   class="btn btn-sm btn-outline-primary"
+                                   title="Assign Officer">
+                                    <i class="bi bi-person-badge"></i>
+                                </a>
+                                <!-- EVIDENCE -->
+                                {% if r['evidence_file'] %}
+                                <a href="{{ url_for('static', filename='uploads/' + r['evidence_file']) }}"
+                                   target="_blank"
+                                   class="btn btn-sm btn-outline-info"
+                                   title="View Evidence">
+                                    <i class="bi bi-paperclip"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size:2.5rem;"></i>
+                            <p class="mt-2">No crime reports in the system yet.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const filterStatus = document.getElementById('filterStatus');
+const searchBox    = document.getElementById('searchBox');
+const rows         = document.querySelectorAll('.report-row');
+
+function applyFilters() {
+    const status = filterStatus.value.toLowerCase();
+    const search = searchBox.value.toLowerCase();
+    rows.forEach(function(row) {
+        const rowStatus = row.dataset.status.toLowerCase();
+        const rowSearch = row.dataset.search;
+        const statusOk  = !status || rowStatus === status;
+        const searchOk  = !search || rowSearch.includes(search);
+        row.style.display = (statusOk && searchOk) ? '' : 'none';
+    });
+}
+
+filterStatus.addEventListener('change', applyFilters);
+searchBox.addEventListener('input',  applyFilters);
+</script>
+{% endblock %}
